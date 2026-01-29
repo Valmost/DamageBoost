@@ -28,37 +28,64 @@ def gp(x, gr):
     return nv
 
 
+def normalize(value, old_min, old_max, new_min, new_max):
+    return (value - old_min) * (new_max - new_min) / (old_max - old_min) + new_min
+
+
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 SCREEN_TITLE = "Damage Boost"
 GRAVITY = 12
 
 
-def calc_slope_collision(angle, xs, ys):
+def calc_slope_collision(angle, xs, ys, delta_time=0.016):
     """
-    Calculate slope collision with vel: xs and ys.
+    Calculate slope collision with surf/slide physics.
     Returns the updated xs and ys.
     """
     try:
-        angle_radians = radians(angle)
-        vector2 = np.array([
-            cos(angle_radians),
-            sin(angle_radians)
-        ])
-        vel = hypot(xs, ys)
-        vector1 = np.array((xs, ys))
-        norm1 = np.linalg.norm(vector1)
-        norm2 = np.linalg.norm(vector2)
+        angle_rad = radians(angle)
 
-        normalized1 = vector1 / norm1
-        normalized2 = vector2 / norm2
+        # Вектор направления склона (вдоль поверхности)
+        slope_dir = np.array([cos(angle_rad), sin(angle_rad)])
 
-        cosine_sim = float(np.dot(normalized1, normalized2))
+        # Нормаль к склону (перпендикулярно поверхности)
+        normal = np.array([-sin(angle_rad), cos(angle_rad)])
 
-        return np.round(vector2 * cosine_sim * vel, decimals=3)
+        # Нормализуем
+        slope_dir = slope_dir / np.linalg.norm(slope_dir)
+        normal = normal / np.linalg.norm(normal)
+
+        # Текущая скорость
+        velocity = np.array([xs, ys])
+
+        # Проекция скорости на нормаль (сколько "врезаемся" в склон)
+        normal_speed = np.dot(velocity, normal)
+
+        # Если движемся В склон - отражаем
+        if normal_speed < 0:
+            # Удаляем компоненту, направленную в склон
+            velocity = velocity - normal_speed * normal
+
+            # Добавляем гравитацию ВДОЛЬ склона (это дает ускорение как в surf)
+            # Гравитация = (0, -GRAVITY)
+            # Проекция гравитации на склон: гравитация - (гравитация·нормаль)*нормаль
+            gravity = np.array([0, -GRAVITY])
+            gravity_normal = np.dot(gravity, normal) * normal
+            gravity_along_slope = gravity - gravity_normal
+
+            # Ускорение вдоль склона (чем круче склон, тем больше)
+            velocity += gravity_along_slope * delta_time * 60  # Ускорение
+
+        rad_velocity = normalize(np.linalg.norm(velocity), 0, 2000, 0, radians(90))
+        # Сохраняем энергию (очень малое трение для surf)
+        velocity *= 0.85 if rad_velocity < angle_rad - 0.1 else 1
+
+        return velocity
+
     except Exception as e:
-        print(e)
-        return np.array((xs, ys))
+        print("Slope collision error:", e)
+        return np.array([xs, ys])
 
 
 class Arme(arcade.Sprite):
@@ -104,9 +131,8 @@ class Arme(arcade.Sprite):
         self.center_y += self.ys * delta_time
         self.center_x += self.xs * delta_time
 
-        self.is_walking = abs(self.xs) > 15
-
     def update_animation(self, delta_time):
+        self.is_walking = abs(self.xs) > 15
         if self.is_walking and not self.is_airborne:
             if self.face_direction == -1:
                 self.texture = self.move_l
@@ -150,14 +176,14 @@ class DamageBoost(arcade.Window):
         for x in range(-SCREEN_WIDTH, SCREEN_WIDTH * 2, 512):
             tile = arcade.Sprite("sprites/wall.png", scale=16)
             tile.center_x = x
-            tile.center_y = 32
+            tile.center_y = 45
             self.walls.append(tile)
 
-        for x in range(int(SCREEN_WIDTH * 0.8), SCREEN_WIDTH * 3, 128):
-            slope = arcade.Sprite("sprites/wall.png", scale=4)
-            slope.center_x = x
-            slope.center_y = 32 + x / 2
-            slope.angle = 15
+        for y in range(0, 5000, 250):
+            slope = arcade.Sprite("sprites/wall.png", scale=16)
+            slope.center_x = y
+            slope.center_y = y / 1.8
+            slope.angle = -30 #atan2(y, slope.center_x)
             self.walls.append(slope)
 
         self.engine = arcade.PhysicsEnginePlatformer(
@@ -173,65 +199,107 @@ class DamageBoost(arcade.Window):
         self.walls.draw(pixelated=True)
 
     def on_update(self, delta_time):
-        pev.old_x, pev.old_y = pev.center_x, pev.center_y
-        pev.collisions = arcade.check_for_collision_with_list(pev, self.walls)
+        pev.center_y += pev.ys * delta_time
+        pev.center_x += pev.xs * delta_time
 
-        pev.is_airborne = not self.engine.can_jump()
-        #if pev.collisions:
-        #    pev.is_airborne = abs(pev.collisions[0].angle) > 45
+        pev.collisions = arcade.check_for_collision_with_list(pev, self.walls)#.sort(key=lambda c: c.angle)
 
-        if pev.is_airborne:  # ========= Airborne:
-            #pev.collisions = []
-            pev.ys += -GRAVITY
-            pev.ys += -pev.ys * abs(pev.ys) * pev.air_friction
+        pev.is_airborne = len(pev.collisions) == 0
 
-        else:  # ==================== On ground:
-            pev.ys = 0
-            if abs(pev.xs) < 0.01:  # If too slow, stop entirely
-                pev.xs = 0.0
-            else:
-                pev.xs *= pev.friction
-        try:
-            if pev.collisions and pev.ys != 0 and pev.xs != 0:
-                res = calc_slope_collision(-pev.collisions[0].angle, pev.xs, pev.ys)
-                pev.xs = res[0]
-                pev.ys = res[1]
-        except Exception as e:
-            print(e)
+        if pev.collisions:
+            for i, collision in enumerate(pev.collisions):
+                if abs(collision.angle) > 0.1:
+                    new_vel = calc_slope_collision(-collision.angle, pev.xs, pev.ys, delta_time)
+                    pev.xs, pev.ys = new_vel[0], new_vel[1]
 
-        # ======================== KEYS:
-        if arcade.key.LEFT in self.keys_pressed and not pev.is_airborne:
+                    angle_rad = radians(collision.angle)
+
+                    dx = pev.center_x - collision.center_x
+                    dy = pev.center_y - collision.center_y
+
+                    rotated_x = dx * cos(-angle_rad) - dy * sin(-angle_rad)
+                    rotated_y = dx * sin(-angle_rad) + dy * cos(-angle_rad)
+
+                    half_height = collision.height / 2
+
+                    while arcade.check_for_collision(pev, collision):
+                        pev.center_y += 1  # Поднимаем на 1 пиксель
+                        # Также можно двигать немного по X в зависимости от угла
+                        if collision.angle > 0:  # Наклон вправо
+                            pev.center_x -= 0
+                        else:  # Наклон влево
+                            pev.center_x += 0
+                    pev.center_y -= 1
+
+                    if rotated_y < -half_height:
+                        pev.ys += 5
+                        rotated_y = -half_height + pev.height / 2 + 5
+
+                        new_dx = rotated_x * cos(angle_rad) - rotated_y * sin(angle_rad)
+                        new_dy = rotated_x * sin(angle_rad) + rotated_y * cos(angle_rad)
+
+                        pev.center_x = collision.center_x + new_dx
+                        pev.center_y = collision.center_y + new_dy
+                    try:
+                        if pev.collisions[i + 1].angle > 0.1: break
+                    except IndexError:
+                        break
+                else:
+                    pev.ys = 0 if len(pev.collisions) == 0 else max(pev.ys, 0)
+                    pev.xs *= 0.95
+        else:
+            pev.ys -= GRAVITY * delta_time * 60
+
+            if pev.ys < -800:
+                pev.ys = -800
+
+        # ============ CONTROLS ============
+        move_speed = 1000
+        air_control = 0
+
+        if arcade.key.LEFT in self.keys_pressed:
             pev.face_direction = -1
-            pev.xs -= pev.speed
+            if not pev.is_airborne:
+                pev.xs -= move_speed * delta_time
+            else:
+                pev.xs -= move_speed * delta_time * air_control
 
-        if arcade.key.RIGHT in self.keys_pressed and not pev.is_airborne:
+        if arcade.key.RIGHT in self.keys_pressed:
             pev.face_direction = 1
-            pev.xs += pev.speed
+            if not pev.is_airborne:
+                pev.xs += move_speed * delta_time
+            else:
+                pev.xs += move_speed * delta_time * air_control
 
-        if arcade.key.UP in self.keys_pressed and not pev.is_airborne: # UP while grounded
-            pev.ys += pev.jump_force
-            pev.center_y += 5
+        if arcade.key.UP in self.keys_pressed and not pev.is_airborne:
+            # Jump
+            pev.ys = 400
+            pev.is_airborne = True
 
         if arcade.key.DOWN in self.keys_pressed and not pev.is_airborne:
-            pev.xs += pev.boost * pev.face_direction
+            # surf boost
+            boost_power = 2200
+            pev.xs += boost_power * pev.face_direction * delta_time
 
-        self.pev_list.update(delta_time)
-        self.pev_list.update_animation()
+        max_speed = 2000
+        current_speed = sqrt(pev.xs ** 2 + pev.ys ** 2)
+        if current_speed > max_speed and not pev.is_airborne:
+            scale = max_speed / current_speed
+            pev.xs *= scale
+            pev.ys *= scale
 
-        # ============ CAMERA
+        pev.update_animation(delta_time)
+
+        # CAMERA
         position = (
             pev.center_x + pev.xs * 0.3,
             pev.center_y + pev.ys * 0.1
         )
-        self.world_camera.position = arcade.math.lerp_2d(  # Изменяем позицию камеры
+        self.world_camera.position = arcade.math.lerp_2d(
             self.world_camera.position,
             position,
-            pev.lerp,  # Плавность следования камеры
+            pev.lerp,
         )
-        #self.engine.update()
-
-        pev.xs = (pev.center_x - pev.old_x) / delta_time
-        pev.ys = (pev.center_y - pev.old_y) / delta_time
 
     def on_key_press(self, key, modifiers):
         self.keys_pressed.add(key)

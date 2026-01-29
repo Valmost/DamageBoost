@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="20a03afc-04e1-4332-a587-bf7a4dc79639" name="Changes" comment="slope beta">
+    <list default="true" id="20a03afc-04e1-4332-a587-bf7a4dc79639" name="Changes" comment="slope done">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.venv/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/.venv/main.py" afterDir="false" />
     </list>
@@ -43,21 +43,22 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;Python.main.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/Иван/PycharmProjects/DamageBoost/.venv&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Python.main.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "master",
+    "last_opened_file_path": "C:/Users/Иван/PycharmProjects/DamageBoost/.venv/sprites"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
-      <recent name="C:\Users\Иван\PycharmProjects\DamageBoost\.venv" />
       <recent name="C:\Users\Иван\PycharmProjects\DamageBoost\.venv\sprites" />
+      <recent name="C:\Users\Иван\PycharmProjects\DamageBoost\.venv\sound" />
+      <recent name="C:\Users\Иван\PycharmProjects\DamageBoost\.venv" />
     </key>
   </component>
   <component name="SharedIndexes">
@@ -99,7 +100,15 @@
       <option name="project" value="LOCAL" />
       <updated>1769262692332</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="slope done">
+      <option name="closed" value="true" />
+      <created>1769695962734</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1769695962734</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -116,6 +125,7 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="basic physics" />
     <MESSAGE value="slope beta" />
-    <option name="LAST_COMMIT_MESSAGE" value="slope beta" />
+    <MESSAGE value="slope done" />
+    <option name="LAST_COMMIT_MESSAGE" value="slope done" />
   </component>
 </project>

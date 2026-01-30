@@ -897,7 +897,7 @@ class GameView(arcade.View):
             self.pev.is_airborne = True
 
         if arcade.key.DOWN in self.keys_pressed and not self.pev.is_airborne:
-            boost_power = 2200
+            boost_power = 1000
             self.pev.xs += boost_power * self.pev.face_direction * delta_time
 
         max_speed = 2000

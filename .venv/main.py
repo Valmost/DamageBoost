@@ -792,9 +792,9 @@ class GameView(arcade.View):
         self.pev.collisions = arcade.check_for_collision_with_list(self.pev, self.walls)
 
         if arcade.check_for_collision_with_list(self.pev, self.spikes) and not self.im:
-            self.hp -= 20
+            self.hp -= 30
             self.pev.center_y += 25
-            self.pev.ys += 50
+            self.pev.ys += 400
             self.im = True
             arcade.schedule(self.remove_im, 3.0)
 

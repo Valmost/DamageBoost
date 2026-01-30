@@ -84,26 +84,21 @@ SCREEN_HEIGHT = 600
 SCREEN_TITLE = "Damage Boost"
 GRAVITY = 12
 
-# Глобальные константы для звуков
-MIN_WIND_SPEED = 450.0  # Минимальная скорость для звука ветра
-MAX_WIND_SPEED = 2000.0  # Максимальная скорость (для нормализации)
-WIND_VOLUME_RANGE = (0.1, 0.8)  # Диапазон громкости ветра
-WIND_PITCH_RANGE = (0.8, 1.5)  # Диапазон pitch ветра
+MIN_WIND_SPEED = 450.0 
+MAX_WIND_SPEED = 2000.0  
+WIND_VOLUME_RANGE = (0.1, 0.8)
+WIND_PITCH_RANGE = (0.8, 1.5) 
 
-# Константы для звука двигателя
-ENGINE_MIN_SPEED = 50.0  # Минимальная скорость для звука двигателя
+ENGINE_MIN_SPEED = 50.0
 ENGINE_VOLUME_RANGE = (0.1, 0.6)
 ENGINE_PITCH_RANGE = (0.7, 1.3)
 
-# Константы для звука торможения
-BRAKE_THRESHOLD = 100.0  # Падение скорости за кадр для активации торможения
-BRAKE_MIN_DURATION = 0.3  # Минимальная длительность звука торможения
+BRAKE_THRESHOLD = 100.0 
+BRAKE_MIN_DURATION = 0.3 
 
 
 class DustParticle(arcade.SpriteCircle):
-    """Частица пыли из-под ног"""
     def __init__(self, x, y, color=(200, 200, 200, 150)):
-        # SpriteCircle создается с фиксированным радиусом
         radius = random.randint(1, 3)
         super().__init__(radius=radius, color=color)
         self.center_x = x
@@ -113,7 +108,6 @@ class DustParticle(arcade.SpriteCircle):
         self.change_x = random.uniform(-20, 20)
         self.change_y = random.uniform(5, 15)
         self.alpha = 150
-        # Не используем scale, работаем с alpha
 
     def update(self, delta_time):
         self.timer += delta_time
@@ -122,7 +116,6 @@ class DustParticle(arcade.SpriteCircle):
         self.change_x *= 0.95
         self.change_y *= 0.9
         self.alpha = int(150 * (1 - self.timer / self.lifetime))
-        # Уменьшаем alpha для эффекта исчезновения
         return self.timer < self.lifetime and self.alpha > 0
 
 
@@ -133,9 +126,9 @@ class Arme(arcade.Sprite):
         self.speed = 30
         self.health = 100
 
-        self.dust_particles = arcade.SpriteList()  # Список частиц
+        self.dust_particles = arcade.SpriteList()
         self.dust_timer = 0.0
-        self.last_ground_x = self.center_x  # Последняя позиция на земле
+        self.last_ground_x = self.center_x 
 
         self.idle_r = arcade.load_texture("sprites/idle_r.png")
         self.idle_l = arcade.load_texture("sprites/idle_l.png")
@@ -168,9 +161,8 @@ class Arme(arcade.Sprite):
 
         self.ang = None
 
-        # Звуки
-        self.speed = 0.0  # Текущая общая скорость
-        self.prev_speed = 0.0  # Скорость в предыдущем кадре
+        self.speed = 0.0  
+        self.prev_speed = 0.0  
         self.wind_sound_player = None
         self.engine_sound_player = None
         self.brake_sound_player = None
@@ -179,7 +171,6 @@ class Arme(arcade.Sprite):
 
     def load_sounds(self):
         try:
-            # Проверяем существование файлов
             if os.path.exists("sound/169913__mydo1__skydive.wav"):
                 self.wind_sound = arcade.load_sound("sound/169913__mydo1__skydive.wav")
             else:
@@ -208,56 +199,40 @@ class Arme(arcade.Sprite):
         self.center_y += self.ys * delta_time
         self.center_x += self.xs * delta_time
 
-        # Обновляем общую скорость
         self.prev_speed = self.speed
         self.speed = sqrt(self.xs ** 2 + self.ys ** 2)
 
-        # Управление звуками
         self.update_sounds(delta_time)
 
     def update_sounds(self, delta_time):
-        """Обновление всех звуков на основе текущего состояния"""
-        # Таймер для звука торможения
         if self.brake_sound_timer > 0:
             self.brake_sound_timer -= delta_time
             if self.brake_sound_timer <= 0 and self.brake_sound_player:
                 self.brake_sound_player.pause()
 
-        # 1. ЗВУК ВЕТРА (только в воздухе и при высокой скорости)
         if not self.is_airborne or self.speed < MIN_WIND_SPEED:
-            # Останавливаем звук ветра если не в воздухе или медленно
             if self.wind_sound_player and self.wind_sound_player.playing:
                 self.wind_sound_player.pause()
         else:
-            # В воздухе и быстро - воспроизводим/обновляем звук ветра
             wind_intensity = normalize(self.speed, MIN_WIND_SPEED, MAX_WIND_SPEED, 0.0, 1.0)
             wind_intensity = max(0.0, min(1.0, wind_intensity))  # Ограничиваем 0-1
 
-            # Вычисляем громкость и pitch
             volume = normalize(wind_intensity, 0.0, 1.0, WIND_VOLUME_RANGE[0], WIND_VOLUME_RANGE[1])
             pitch = normalize(wind_intensity, 0.0, 1.0, WIND_PITCH_RANGE[0], WIND_PITCH_RANGE[1])
 
             if self.wind_sound and not self.is_airborne:
                 if not self.wind_sound_player or not self.wind_sound_player.playing:
-                    # Начинаем воспроизведение
                     self.wind_sound_player = self.wind_sound.play(
                         volume=volume,
-                        #pitch=pitch,
                         loop=True
                     )
                 else:
-                    # Обновляем существующее воспроизведение
                     self.wind_sound_player.volume = volume
                     self.wind_sound_player.pitch = pitch
 
-        # 2. ЗВУК ДВИГАТЕЛЯ (только на земле)
         if self.is_airborne or not self.engine_sound:
-            # Останавливаем звук двигателя если в воздухе
-            #if self.engine_sound_player and self.engine_sound_player.playing:
-                #self.engine_sound_player.pause()
             pass
         else:
-            # На земле - воспроизводим/обновляем звук двигателя
             engine_intensity = normalize(abs(self.xs), ENGINE_MIN_SPEED, MAX_WIND_SPEED, 0.0, 1.0)
             engine_intensity = max(0.0, min(1.0, engine_intensity))
 
@@ -265,33 +240,27 @@ class Arme(arcade.Sprite):
             pitch = normalize(engine_intensity, 0.0, 1.0, ENGINE_PITCH_RANGE[0], ENGINE_PITCH_RANGE[1])
 
             if not self.engine_sound_player or not self.engine_sound_player.playing:
-                # Начинаем воспроизведение
                 self.engine_sound_player = self.engine_sound.play(
                     volume=volume,
                     #pitch=pitch,
                     loop=True
                 )
             else:
-                # Обновляем существующее воспроизведение
                 self.engine_sound_player.volume = volume
                 self.engine_sound_player.pitch = pitch
 
-        # 3. ЗВУК ТОРМОЖЕНИЯ (резкое снижение скорости на земле)
         if self.brake_sound:
             speed_drop = self.prev_speed - self.speed
 
             if speed_drop > BRAKE_THRESHOLD and self.speed > 100:
-                # Резкое торможение - воспроизводим звук
                 if self.brake_sound_player and self.brake_sound_player.playing:
                     self.brake_sound_player.pause()
 
-                # Громкость зависит от силы торможения
                 brake_intensity = normalize(speed_drop, BRAKE_THRESHOLD, 1000.0, 0.3, 1.0)
                 brake_intensity = max(0.3, min(1.0, brake_intensity))
 
                 self.brake_sound_player = self.brake_sound.play(
                     volume=brake_intensity * 0.7,  # Немного тише
-                    #pitch=0.9 + brake_intensity * 0.2  # Pitch зависит от интенсивности
                 )
                 self.brake_sound_timer = BRAKE_MIN_DURATION
 
@@ -318,7 +287,6 @@ class Arme(arcade.Sprite):
             print('Received:', *calc_slope_collision(-pev.collisions[0].angle, pev.xs, pev.ys))
 
     def on_close(self):
-        # Останавливаем все звуки при закрытии
         if self.wind_sound_player and self.wind_sound_player.playing:
             self.wind_sound_player.pause()
         if self.engine_sound_player and self.engine_sound_player.playing:
@@ -339,23 +307,17 @@ import random
 import os
 
 
-# ... весь ваш существующий код ДО класса DamageBoost ...
 
 class MainMenuView(arcade.View):
-    """Главное меню с выбором уровней"""
-
     def __init__(self):
         super().__init__()
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
 
-        # Задний фон для меню
         self.background_color = arcade.color.BLACK
 
-        # Создаем вертикальный бокс для кнопок
         self.v_box = arcade.gui.UIBoxLayout()
 
-        # Заголовок игры
         title_label = arcade.gui.UILabel(
             text="DAMAGE BOOST",
             font_size=48,
@@ -364,7 +326,6 @@ class MainMenuView(arcade.View):
         )
         self.v_box.add(title_label)
 
-        # Кнопка "Уровень 1"
         level1_button = arcade.gui.UIFlatButton(
             text="Уровень 1: Обучение",
             width=300,
@@ -373,7 +334,6 @@ class MainMenuView(arcade.View):
         level1_button.on_click = self.on_level1_click
         self.v_box.add(level1_button)
 
-        # Кнопка "Уровень 2"
         level2_button = arcade.gui.UIFlatButton(
             text="Уровень 2: Склоны",
             width=300,
@@ -382,7 +342,6 @@ class MainMenuView(arcade.View):
         level2_button.on_click = self.on_level2_click
         self.v_box.add(level2_button)
 
-        # Кнопка "Уровень 3"
         level3_button = arcade.gui.UIFlatButton(
             text="Уровень 3: Экстрим",
             width=300,
@@ -391,7 +350,6 @@ class MainMenuView(arcade.View):
         level3_button.on_click = self.on_level3_click
         self.v_box.add(level3_button)
 
-        # Кнопка "Выход"
         exit_button = arcade.gui.UIFlatButton(
             text="Выход",
             width=200,
@@ -400,7 +358,6 @@ class MainMenuView(arcade.View):
         exit_button.on_click = self.on_exit_click
         self.v_box.add(exit_button)
 
-        # Создаем виджет для центрирования
         anchor = arcade.gui.UIAnchorLayout()
         anchor.add(
             anchor_x="center_x",
@@ -409,20 +366,16 @@ class MainMenuView(arcade.View):
         )
         self.manager.add(anchor)
 
-        # Текущий выбранный уровень
         self.selected_level = None
 
-        # Фоновая музыка меню (опционально)
         self.menu_music = None
         if os.path.exists("sound/menu_music.wav"):
             self.menu_music = arcade.load_sound("sound/menu_music.wav")
             self.music_player = None
 
     def on_show_view(self):
-        """Вызывается при показе меню"""
         self.manager.enable()
 
-        # Запускаем музыку меню, если есть
         if self.menu_music and (not self.music_player or not self.music_player.playing):
             self.music_player = self.menu_music.play(loop=True, volume=0.3)
 
@@ -436,7 +389,6 @@ class MainMenuView(arcade.View):
 
 
 
-        # Рисуем декоративные элементы (опционально)
         arcade.draw_text(
             "Выберите уровень",
             SCREEN_WIDTH // 2,
@@ -447,7 +399,6 @@ class MainMenuView(arcade.View):
             font_name="Kenney Future"
         )
 
-        # Рисуем управление внизу
         arcade.draw_text(
             "ESC - Вернуться в меню",
             SCREEN_WIDTH // 2,
@@ -457,7 +408,6 @@ class MainMenuView(arcade.View):
             anchor_x="center"
         )
 
-        # Рисуем UI элементы
         self.manager.draw()
 
     def on_level1_click(self, event):
@@ -495,7 +445,6 @@ class MainMenuView(arcade.View):
             # В меню ESC ничего не делает
             pass
         elif key == arcade.key.ENTER:
-            # Enter запускает первый уровень
             self.selected_level = 1
             self.start_game()
 
@@ -522,42 +471,36 @@ class GameView(arcade.View):
         self.win = False  # Победа или поражение
         self.end_time = 0.0  # Время завершения
 
-        # Для экрана окончания
         self.end_manager = arcade.gui.UIManager()
         self.setup_end_screen()
 
-        # Инициализируем физический движок
         self.engine = arcade.PhysicsEnginePlatformer(
             player_sprite=self.pev,
             gravity_constant=0,
             walls=self.walls
         )
 
-        # Камера
+
         self.world_camera = arcade.camera.Camera2D()
         self.gui_camera = arcade.camera.Camera2D()
 
         self.batch = Batch()
 
-        # Загружаем уровень
         self.setup_level()
 
-        # Флаг паузы
+
         self.is_paused = False
 
-        # Меню паузы
+
         self.pause_manager = arcade.gui.UIManager()
         self.pause_manager.enable()
         self.setup_pause_menu()
 
     def setup_end_screen(self):
-        """Настройка экрана окончания игры"""
         self.end_manager.enable()
 
-        # Вертикальный контейнер
         end_v_box = arcade.gui.UIBoxLayout()
 
-        # Заголовок (будем менять текст)
         self.end_title = arcade.gui.UILabel(
             text="",
             font_size=48,
@@ -566,7 +509,6 @@ class GameView(arcade.View):
         )
         end_v_box.add(self.end_title)
 
-        # Статистика
         self.end_stats = arcade.gui.UILabel(
             text="",
             font_size=24,
@@ -574,7 +516,6 @@ class GameView(arcade.View):
         )
         end_v_box.add(self.end_stats)
 
-        # Кнопка рестарта
         restart_button = arcade.gui.UIFlatButton(
             text="Играть снова",
             width=250,
@@ -583,7 +524,6 @@ class GameView(arcade.View):
         restart_button.on_click = self.on_restart_click
         end_v_box.add(restart_button)
 
-        # Кнопка в меню
         menu_button = arcade.gui.UIFlatButton(
             text="В главное меню",
             width=250,
@@ -592,7 +532,6 @@ class GameView(arcade.View):
         menu_button.on_click = self.on_end_menu_click
         end_v_box.add(menu_button)
 
-        # Создаем layout
         end_layout = arcade.gui.UIAnchorLayout()
         end_layout.add(
             anchor_x="center_x",
@@ -601,7 +540,7 @@ class GameView(arcade.View):
         )
 
         self.end_manager.add(end_layout)
-        self.end_manager.disable()  # Изначально скрыт
+        self.end_manager.disable()
 
     def on_restart_click(self, event):
         """Перезапуск текущего уровня"""
@@ -611,8 +550,7 @@ class GameView(arcade.View):
         self.time = 0.0
         self.end_manager.disable()
 
-        # Сброс позиции персонажа
-        self.setup_level()  # Перезагружаем уровень
+        self.setup_level()
 
     def on_end_menu_click(self, event):
         """Возврат в главное меню"""
@@ -625,7 +563,6 @@ class GameView(arcade.View):
         self.win = win
         self.end_time = self.time
 
-        # Обновляем текст на экране окончания
         if win:
             self.end_title.text = "УРОВЕНЬ ПРОЙДЕН!"
             self.end_title.text_color = arcade.color.GOLD
@@ -633,14 +570,12 @@ class GameView(arcade.View):
             self.end_title.text = "ПОРАЖЕНИЕ"
             self.end_title.text_color = arcade.color.RED
 
-        # Форматируем время
         minutes = int(self.end_time // 60)
         seconds = int(self.end_time % 60)
         milliseconds = int((self.end_time % 1) * 1000)
 
         time_str = f"{minutes:02d}:{seconds:02d}.{milliseconds:03d}"
 
-        # Обновляем статистику
         if win:
             self.end_stats.text = (
                 f"Уровень: {self.level} \n"
@@ -660,7 +595,6 @@ class GameView(arcade.View):
                 file.write(f"{datetime.now()}\nУровень: {self.level} \nВремя: {time_str}"
                            f"\nПричина: здоровье закончилось\n\n\n")
 
-        # Показываем экран окончания
         self.end_manager.enable()
 
         # Останавливаем игровые звуки
@@ -755,7 +689,6 @@ class GameView(arcade.View):
         """Настройка меню паузы"""
         self.pause_v_box = arcade.gui.UIBoxLayout()
 
-        # Заголовок паузы
         self.pause_widget = arcade.gui.UIAnchorLayout()
         self.pause_widget.add(
             anchor_x="center_x",
@@ -764,7 +697,6 @@ class GameView(arcade.View):
         )
         self.pause_manager.add(self.pause_widget)
 
-        # Кнопка продолжить
         resume_button = arcade.gui.UIFlatButton(
             text="Продолжить",
             width=250,
@@ -773,7 +705,6 @@ class GameView(arcade.View):
         resume_button.on_click = self.on_resume_click
         self.pause_v_box.add(resume_button)
 
-        # Кнопка выхода в меню
         menu_button = arcade.gui.UIFlatButton(
             text="В главное меню",
             width=250,
@@ -782,7 +713,6 @@ class GameView(arcade.View):
         menu_button.on_click = self.on_menu_click
         self.pause_v_box.add(menu_button)
 
-        # Добавляем меню паузы (изначально скрыто)
         self.pause_widget = arcade.gui.UIAnchorLayout(
             anchor_x="center",
             anchor_y="center",
@@ -813,12 +743,10 @@ class GameView(arcade.View):
 
         self.pev.dust_particles.draw()
 
-        # Рисуем игровые объекты
         self.pev_list.draw(pixelated=True)
         self.spikes.draw(pixelated=True)
         self.walls.draw(pixelated=True)
 
-        # Рисуем информацию об уровне
         arcade.draw_text(
             f"Уровень {self.level}",
             pev.center_x - 350,
@@ -827,7 +755,6 @@ class GameView(arcade.View):
             18
         )
 
-        # Рисуем скорость
         speed = sqrt(self.pev.xs ** 2 + self.pev.ys ** 2)
         arcade.draw_text(
             f"Скорость: {int(speed)} u/s",
@@ -840,7 +767,6 @@ class GameView(arcade.View):
         self.gui_camera.use()
         self.batch.draw()
 
-        # Рисуем меню паузы если нужно
         if self.game_over: self.end_manager.draw()
         if self.is_paused: self.pause_manager.draw()
 
@@ -860,7 +786,6 @@ class GameView(arcade.View):
             self.end_game(win=True)
             return
 
-        # Ваш существующий код обновления из DamageBoost.on_update
         self.pev.center_y += self.pev.ys * delta_time
         self.pev.center_x += self.pev.xs * delta_time
 
@@ -874,16 +799,13 @@ class GameView(arcade.View):
             arcade.schedule(self.remove_im, 3.0)
 
         if not self.pev.is_airborne and abs(self.pev.xs) > 50:
-            # Создаем частицы каждые 0.05 секунды при движении
             self.pev.dust_timer += delta_time
             if self.pev.dust_timer >= 0.05:
                 self.pev.dust_timer = 0
 
-                # Количество частиц зависит от скорости
                 particle_count = min(int(abs(self.pev.xs) / 100), 5)
 
                 for _ in range(particle_count):
-                    # Позиция под ногами (смещение в зависимости от направления)
                     offset_x = -10 if self.pev.face_direction == 1 else 10
                     dust = DustParticle(
                         x=self.pev.center_x + offset_x,
@@ -895,13 +817,11 @@ class GameView(arcade.View):
                             150  # Alpha
                         )
                     )
-                    # Направление частиц зависит от движения
                     dust.change_x = random.uniform(-30, 30) + (self.pev.xs * 0.1)
                     dust.change_y = random.uniform(5, 25)
                     self.pev.dust_particles.append(dust)
 
-            # Обновление частиц
-        for particle in self.pev.dust_particles[:]:  # Копия списка для безопасного удаления
+        for particle in self.pev.dust_particles[:]:
             if not particle.update(delta_time):
                 particle.remove_from_sprite_lists()
 
